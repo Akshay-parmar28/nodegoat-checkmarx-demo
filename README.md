@@ -68,14 +68,14 @@
 
     ex: `git push -u origin IT24103645`
 
-##### Important: unlike WebGoat, you can just run NodeGoat directly with `npm run dev` inside INTELLIJ ULTIMATE (auto-restarts on file changes via nodemon) and skip Docker entirely while coding. Only use Docker when you want to test the fully containerised setup or before committing changes to github.
+##### Important: you can just run NodeGoat directly with `npm run dev` inside INTELLIJ ULTIMATE (auto-restarts on file changes via nodemon) and skip Docker entirely while coding. Only use Docker when you want to test the fully containerised setup or before committing changes to github.
 
 ### step 6 - Run locally for fast iteration (no Docker needed). Do these steps inside Intellij Ultimate terminal.
 ---
 
 13. make sure MongoDB is available. Easiest option: start just the mongo container from the compose file:
 
-    ```docker-compose up mongo```
+    ```docker-compose up -d mongo```
 
 14. seed the database once (first time only):
 
