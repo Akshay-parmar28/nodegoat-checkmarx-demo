@@ -1,6 +1,6 @@
 # Setup instructions for group members
 
-### Step 1 - install Node.js, Docker & Git. Node.js runs NodeGoat, Docker is needed to run it in containers (app + MongoDB), Git is for committing and pushing to GitHub (you may have to add your GitHub account credentials to local git if not already added)
+### Step 1 - install Node.js, Docker & Git. Node.js runs NodeGoat, Docker is needed to run it in containers (app + MongoDB), Git is for committing and pushing to GitHub (you may have to add your GitHub account credentials to local git if not already added. Also you might have to setup an SSH key to push changes to github)
 ---
 1. Install [Node.js](https://nodejs.org/) (LTS 24.19.0 version), [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Engine and Compose), and Git.
 
@@ -12,14 +12,14 @@
 
    Restart pc after completion.
 
-### step 2 - Downloading NodeGoat project to your PC to work on it. Unlike WebGoat, there's no JAR to build — NodeGoat runs directly from source with Node.js. Docker is only needed to bring up the full app + database together, or to test the final containerised setup before committing.
+### step 2 - Downloading NodeGoat project to your PC to work on it. NodeGoat runs directly from source with Node.js. Docker is only needed to bring up the full app + database together, or to test the final containerised setup before committing.
 ---
 
 4. open CMD in desktop run this to clone the repo:
 
     ```git clone https://github.com/Ravindu-orzo/NodeGoat.git```
 
-### step 3 - install dependencies. NodeGoat has no build/JAR step — we just install its npm packages.
+### step 3 - install dependencies. we just install NodeGoat's npm packages.
 ---
 
 5. move into the project folder: ```cd NodeGoat```
@@ -28,7 +28,7 @@
 
     ```npm install```
 
-### step 4 - Making the Docker images and running them with Docker Desktop. Unlike WebGoat (one container, embedded database), NodeGoat's docker-compose brings up TWO containers: the app and a separate MongoDB instance, connected together.
+### step 4 - Making the Docker images and running them with Docker Desktop. NodeGoat's docker-compose brings up TWO containers: the app and a separate MongoDB instance, connected together.
 
 7. open start menu and run Docker Desktop.
 
@@ -68,9 +68,9 @@
 
     ex: `git push -u origin IT24103645`
 
-##### Important: unlike WebGoat, there's no build step at all for local testing — you can just run NodeGoat directly with `npm run dev` (auto-restarts on file changes via nodemon) and skip Docker entirely while coding. Only use Docker when you want to test the fully containerised setup or before committing changes that touch Docker config.
+##### Important: unlike WebGoat, you can just run NodeGoat directly with `npm run dev` inside INTELLIJ ULTIMATE (auto-restarts on file changes via nodemon) and skip Docker entirely while coding. Only use Docker when you want to test the fully containerised setup or before committing changes to github.
 
-### step 6 - Run locally for fast iteration (no Docker needed).
+### step 6 - Run locally for fast iteration (no Docker needed). Do these steps inside Intellij Ultimate terminal.
 ---
 
 13. make sure MongoDB is available. Easiest option: start just the mongo container from the compose file:
