@@ -2,7 +2,7 @@
 
 ### Step 1 - install Node.js, Docker & Git. Node.js runs NodeGoat, Docker is needed to run it in containers (app + MongoDB), Git is for committing and pushing to GitHub (you may have to add your GitHub account credentials to local git if not already added)
 ---
-1. Install [Node.js](https://nodejs.org/) (LTS version), [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Engine and Compose), and Git.
+1. Install [Node.js](https://nodejs.org/) (LTS 24.19.0 version), [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Engine and Compose), and Git.
 
 2. check with `node --version`, `docker --version` and `docker compose version`
 
@@ -17,7 +17,7 @@
 
 4. open CMD in desktop run this to clone the repo:
 
-    ```git clone https://github.com/<your-fork-or-org>/NodeGoat.git```
+    ```git clone https://github.com/Ravindu-orzo/NodeGoat.git```
 
 ### step 3 - install dependencies. NodeGoat has no build/JAR step — we just install its npm packages.
 ---
