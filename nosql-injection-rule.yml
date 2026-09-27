@@ -1,0 +1,10 @@
+rules:
+  - id: nodegoat-nosql-injection-username
+    languages: [javascript]
+    severity: ERROR
+    message: >
+      Unsanitized user input passed directly into a MongoDB query object,
+      allowing NoSQL operator injection (e.g. $ne, $gt).
+    patterns:
+      - pattern: "$COL.findOne({ userName: $USERNAME }, ...)"
+      - pattern-not: "$COL.findOne({ userName: String($ANYTHING) }, ...)"
