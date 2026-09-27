@@ -28,7 +28,10 @@ describe("/allocations behaviour", () => {
     cy.get("input[name='threshold']");
   });
 
-  it("Should redirect the user", () => {
+    it("Should always land the user on their OWN allocations page, regardless of the URL id used to get there", () => {
+    // Fix for A4 Insecure DOR: userId now comes from the session, not the URL,
+    // so submitting the form redirects to the signed-in user's real id -
+    // it may differ from the "1" used in the initial visit above.
     const threshold = 2;
     cy.userSignIn();
     cy.visitPage("/allocations/1");
@@ -42,7 +45,7 @@ describe("/allocations behaviour", () => {
 
     cy.location().should((loc) => {
       expect(loc.search).to.eq(`?threshold=${threshold}`);
-      expect(loc.pathname).to.eq("/allocations/1");
+      expect(loc.pathname).to.match(/^\/allocations\/\w+$/);
     });
   });
 });
