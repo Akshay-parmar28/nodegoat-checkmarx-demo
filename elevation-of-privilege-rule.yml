@@ -1,0 +1,11 @@
+rules:
+  - id: nodegoat-missing-admin-check-benefits
+    languages: [javascript]
+    severity: ERROR
+    message: >
+      The /benefits route is missing the isAdmin authorization check,
+      allowing any logged-in user (not just admins) to access admin-only
+      functionality.
+    patterns:
+      - pattern: app.get("/benefits", isLoggedIn, $HANDLER)
+      - pattern-not: app.get("/benefits", isLoggedIn, isAdmin, $HANDLER)
