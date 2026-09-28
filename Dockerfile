@@ -3,9 +3,10 @@ ENV WORKDIR /usr/src/app/
 WORKDIR $WORKDIR
 COPY package*.json $WORKDIR
 RUN apk add --no-cache ca-certificates && update-ca-certificates
-RUN npm install --production --no-cache
-RUN npm install mongodb --no-cache
-
+RUN npm config set strict-ssl false
+RUN npm config set registry https://registry.npmjs.org/
+RUN npm config set user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+RUN npm install --legacy-peer-deps
 FROM node:18-alpine
 ENV USER node
 ENV WORKDIR /home/$USER/app
