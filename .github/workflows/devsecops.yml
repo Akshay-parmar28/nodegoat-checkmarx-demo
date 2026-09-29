@@ -1,0 +1,56 @@
+name: DevSecOps Security Pipeline
+
+on:
+  push:
+    branches: [ "main", "master", "dev" ]
+  pull_request:
+    branches: [ "main", "master", "dev" ]
+
+jobs:
+  security-gates:
+    name: DevSecOps Security Gates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Fetches full git history required for Gitleaks secrets detection
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '14.x'
+
+      - name: Install Application Dependencies
+        run: npm ci
+
+      # --- GATE 1: SAST SCANNING (Warn only) ---
+      - name: SAST Scan (Semgrep)
+        uses: semgrep/semgrep-action@v1
+        continue-on-error: true # Logs findings but allows pipeline execution to continue
+        with:
+          config: p/security-audit
+
+      # --- GATE 2: DEPENDENCY SCANNING (Warn only) ---
+      - name: Dependency Audit (npm audit)
+        run: npm audit || true # '|| true' ignores non-zero exit codes to prevent build failure
+
+      # --- GATE 3: SECRETS SCANNING (STRICT GATE - FAILS THE BUILD) ---
+      - name: Secrets Scan (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Gitleaks exits with code 1 upon detecting leaked credentials/keys, breaking the build
+
+      # --- GATE 4: CONTAINER IMAGE SCANNING (Warn only) ---
+      - name: Build Docker Container Image
+        run: docker build -t my-app:${{ github.sha }} .
+
+      - name: Container Image Vulnerability Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'my-app:${{ github.sha }}'
+          format: 'table'
+          exit-code: '0' # '0' prints vulnerability table without triggering a build failure
+          severity: 'CRITICAL,HIGH'
