@@ -25,7 +25,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18.x' # Fall back to '18.x' or '16.x' if npm ci fails on legacy NodeGoat packages
+          node-version: '14.x'
 
       - name: Install Application Dependencies
         run: npm ci
