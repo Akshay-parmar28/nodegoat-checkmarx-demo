@@ -15,7 +15,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Fetches full git history required for Gitleaks secrets detection
+          fetch-depth: 0 # Fetches full git history so Gitleaks scans the entire repo and history
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -25,10 +25,10 @@ jobs:
       - name: Install Application Dependencies
         run: npm ci
 
-      # --- GATE 1: SAST SCANNING (Warn only) ---
+      # --- GATE 1: SAST SCANNING (Full Repo - Warn only) ---
       - name: SAST Scan (Semgrep)
         uses: semgrep/semgrep-action@v1
-        continue-on-error: true # Logs findings but allows pipeline execution to continue
+        continue-on-error: true # Logs findings across the full repo but allows pipeline to continue
         with:
           config: p/security-audit
 
@@ -36,12 +36,12 @@ jobs:
       - name: Dependency Audit (npm audit)
         run: npm audit || true # '|| true' ignores non-zero exit codes to prevent build failure
 
-      # --- GATE 3: SECRETS SCANNING (STRICT GATE - FAILS THE BUILD) ---
+      # --- GATE 3: SECRETS SCANNING (Full Repo - STRICT GATE - FAILS THE BUILD) ---
       - name: Secrets Scan (Gitleaks)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Gitleaks exits with code 1 upon detecting leaked credentials/keys, breaking the build
+        # Gitleaks scans full repo history via fetch-depth: 0 and fails on secrets detection
 
       # --- GATE 4: CONTAINER IMAGE SCANNING (Warn only) ---
       - name: Build Docker Container Image
