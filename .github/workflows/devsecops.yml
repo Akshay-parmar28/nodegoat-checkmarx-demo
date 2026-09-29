@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ "main", "master", "dev" ]
 
+# Added so that DAST scan can write post its results to github issues
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   security-gates:
     name: DevSecOps Security Gates
