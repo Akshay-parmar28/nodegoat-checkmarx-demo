@@ -46,7 +46,11 @@ jobs:
 
       - name: Run Semgrep SAST
         run: |
-          semgrep scan --config auto --config .semgrep.yml --json --output semgrep-results.json .
+          semgrep scan \
+            --config auto \
+            --config .semgrep.yml \
+            --json \
+            --output semgrep-results.json .
 
           python - <<'PY'
           import json
