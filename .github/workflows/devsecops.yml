@@ -30,7 +30,11 @@ jobs:
         uses: semgrep/semgrep-action@v1
         continue-on-error: true # Logs findings across the full repo but allows pipeline to continue
         with:
-          config: p/security-audit
+          config: >-
+            p/javascript
+            p/nodejs
+            p/owasp-top-10
+            p/expressjs
 
       # --- GATE 2: DEPENDENCY SCANNING (Warn only) ---
       - name: Dependency Audit (npm audit)
