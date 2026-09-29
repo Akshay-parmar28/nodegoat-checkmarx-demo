@@ -67,14 +67,35 @@ jobs:
           exit-code: '0' # '0' prints vulnerability table without triggering a build failure
           severity: 'CRITICAL,HIGH'
 
-      # --- GATE 5: DAST SCANNING (Warn only) ---
-      - name: Start NodeGoat App Container
+# --- GATE 5: DAST SCANNING (Warn only) ---
+      - name: Start NodeGoat Stack
         run: |
-          docker run -d -p 4000:4000 --name nodegoat-app my-app:${{ github.sha }}
-          sleep 10
+          docker compose up -d --build
+
+          echo "Waiting for NodeGoat..."
+
+          for i in {1..30}; do
+            if curl --fail http://localhost:4000 > /dev/null 2>&1; then
+              echo "NodeGoat is ready"
+              exit 0
+            fi
+
+            echo "Waiting for NodeGoat... ($i/30)"
+            sleep 2
+          done
+      
+          echo "NodeGoat failed to start"
+          docker compose ps
+          docker compose logs
+          exit 1
 
       - name: OWASP ZAP DAST Scan
         uses: zaproxy/action-baseline@v0.15.0
         with:
           target: 'http://localhost:4000'
           fail_action: false
+      
+      - name: Stop NodeGoat Stack
+        if: always()
+        run: docker compose down -v
+
