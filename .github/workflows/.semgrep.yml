@@ -1,0 +1,7 @@
+rules:
+  - id: nodegoat-eval-user-input
+    languages:
+      - javascript
+    message: "User-controlled input is passed to eval(). Use numeric parsing instead."
+    severity: ERROR
+    pattern: eval(req.body.$FIELD)
