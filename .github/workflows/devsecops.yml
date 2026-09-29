@@ -13,28 +13,36 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetches full git history so Gitleaks scans the entire repo and history
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '14.x'
+          python-version: '3.x'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x' # Fall back to '18.x' or '16.x' if npm ci fails on legacy NodeGoat packages
 
       - name: Install Application Dependencies
         run: npm ci
 
       # --- GATE 1: SAST SCANNING (Full Repo - Warn only) ---
+      - name: Install Semgrep
+        run: python3 -m pip install --upgrade semgrep
+
       - name: SAST Scan (Semgrep)
-        uses: semgrep/semgrep-action@v1
         continue-on-error: true # Logs findings across the full repo but allows pipeline to continue
-        with:
-          config: >-
-            p/javascript
-            p/nodejs
-            p/owasp-top-10
-            p/expressjs
+        run: |
+          semgrep scan \
+            --config p/expressjs \
+            --config p/javascript \
+            --config p/nodejs \
+            --error \
+            .
 
       # --- GATE 2: DEPENDENCY SCANNING (Warn only) ---
       - name: Dependency Audit (npm audit)
