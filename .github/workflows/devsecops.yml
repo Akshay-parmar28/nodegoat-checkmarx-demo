@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   issues: write
+  security-events: write # Required for CodeQL to write findings to GitHub Security tab
 
 jobs:
   security-gates:
@@ -36,10 +37,15 @@ jobs:
         run: npm ci
 
       # --- GATE 1: SAST SCANNING (Full Repo - Warn only) ---
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: 'javascript-typescript'
+
       - name: Install Semgrep
         run: python3 -m pip install --upgrade semgrep
 
-      - name: SAST Scan (Semgrep)
+      - name: SAST Scan 1 (Semgrep)
         continue-on-error: true # Logs findings across the full repo but allows pipeline to continue
         run: |
           semgrep scan \
@@ -48,6 +54,10 @@ jobs:
             --config p/nodejs \
             --error \
             .
+
+      - name: SAST Scan 2 (CodeQL)
+        uses: github/codeql-action/analyze@v3
+        continue-on-error: true # Logs findings but allows pipeline execution to continue
 
       # --- GATE 2: DEPENDENCY SCANNING (Warn only) ---
       - name: Dependency Audit (npm audit)
@@ -72,7 +82,7 @@ jobs:
           exit-code: '0' # '0' prints vulnerability table without triggering a build failure
           severity: 'CRITICAL,HIGH'
 
-# --- GATE 5: DAST SCANNING (Warn only) ---
+      # --- GATE 5: DAST SCANNING (Warn only) ---
       - name: Start NodeGoat Stack
         run: |
           docker compose up -d --build
@@ -88,7 +98,7 @@ jobs:
             echo "Waiting for NodeGoat... ($i/30)"
             sleep 2
           done
-      
+          
           echo "NodeGoat failed to start"
           docker compose ps
           docker compose logs
@@ -99,8 +109,7 @@ jobs:
         with:
           target: 'http://localhost:4000'
           fail_action: false
-      
+        
       - name: Stop NodeGoat Stack
         if: always()
         run: docker compose down -v
-
