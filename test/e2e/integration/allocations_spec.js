@@ -42,7 +42,7 @@ describe("/allocations behaviour", () => {
 
     cy.location().should((loc) => {
       expect(loc.search).to.eq(`?threshold=${threshold}`);
-      expect(loc.pathname).to.eq("/allocations/1");
+      expect(loc.pathname).to.eq("/allocations/2");
     });
   });
 });
