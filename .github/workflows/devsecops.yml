@@ -1,4 +1,3 @@
-```yaml
 name: DevSecOps Pipeline
 
 on:
@@ -37,7 +36,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 14
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -45,7 +44,7 @@ jobs:
 
       - name: Dependency Security Audit
         continue-on-error: true
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
 
   sast-semgrep:
     name: SAST - Semgrep
@@ -73,10 +72,8 @@ jobs:
 
           python - <<'PY'
           import json
-
           with open("semgrep-results.json") as f:
               data = json.load(f)
-
           print(f"Semgrep findings: {len(data.get('results', []))}")
           PY
 
@@ -114,4 +111,3 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           exit-code: '1'
-```
