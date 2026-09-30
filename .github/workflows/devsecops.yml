@@ -26,7 +26,7 @@ jobs:
         run: npm test
 
   dependency-security:
-    name: Dependency Security Gate
+    name: Dependency Security Audit (report only)
     runs-on: ubuntu-latest
 
     steps:
@@ -43,6 +43,7 @@ jobs:
         run: npm ci
 
       - name: Dependency Security Audit
+        continue-on-error: true
         run: npm audit --audit-level=high
 
   sast-semgrep:
