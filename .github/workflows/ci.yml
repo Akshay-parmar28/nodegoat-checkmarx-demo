@@ -57,7 +57,7 @@ jobs:
       - name: Gate 3 - Dependency Audit (npm audit)
         run: |
           npm audit --audit-level=critical
-        continue-on-error: true
+        continue-on-error: false
 
       # Step 5: Build Docker Image
       - name: Build Application Docker Image
