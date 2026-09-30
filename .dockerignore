@@ -4,3 +4,6 @@ docker-compose.yml
 .git
 .github
 .gitignore
+artifacts/cert/server.key
+node_modules
+artifacts/cert/server.key.backup
