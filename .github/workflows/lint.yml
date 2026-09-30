@@ -22,5 +22,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Run linter
-        run: npx --no-install jshint@2.12.0 .
+        run: npx --no-install jshint .
