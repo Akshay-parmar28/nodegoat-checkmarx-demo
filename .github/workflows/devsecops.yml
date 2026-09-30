@@ -21,7 +21,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetches full git history so Gitleaks scans the entire repo and history
+          fetch-depth: 0
+
+      # --- GATE 3a: SECRETS SCANNING (Working tree - STRICT GATE - FAILS THE BUILD) ---
+      # Runs before npm ci so node_modules is not scanned.
+      # Catches secrets that already exist in files (e.g. a committed private key),
+      # which the commit-range scan below can miss.
+      - name: Secrets Scan (Gitleaks CLI - working tree)
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source /repo --no-git --redact --verbose --exit-code 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -63,12 +72,12 @@ jobs:
       - name: Dependency Audit (npm audit)
         run: npm audit || true # '|| true' ignores non-zero exit codes to prevent build failure
 
-      # --- GATE 3: SECRETS SCANNING (Full Repo - STRICT GATE - FAILS THE BUILD) ---
+      # --- GATE 3b: SECRETS SCANNING (Commit range - STRICT GATE - FAILS THE BUILD) ---
       - name: Secrets Scan (Gitleaks)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Gitleaks scans full repo history via fetch-depth: 0 and fails on secrets detection
+        # Scans the commits in the push / pull request and fails on secrets detection
 
       # --- GATE 4: CONTAINER IMAGE SCANNING (Warn only) ---
       - name: Build Docker Container Image
