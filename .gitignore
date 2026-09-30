@@ -31,3 +31,4 @@ test/e2e/videos/
 .dccache
 .env
 certs/
+*.bak
