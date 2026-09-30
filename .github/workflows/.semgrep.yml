@@ -1,7 +1,15 @@
-rules:
-  - id: nodegoat-eval-user-input
-    languages:
-      - javascript
-    message: "User-controlled input is passed to eval(). Use numeric parsing instead."
-    severity: ERROR
-    pattern: eval(req.body.$FIELD)
+name: Custom Semgrep Rule Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install semgrep
+      - run: semgrep scan --config .semgrep.yml .
