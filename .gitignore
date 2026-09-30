@@ -31,3 +31,5 @@ artifacts/cert/server.key.backup
 
 # ignore Snyk Code scanner files
 .dccache
+
+/scan-comparison/

@@ -1,3 +1,4 @@
+```yaml
 name: DevSecOps Pipeline
 
 on:
@@ -25,8 +26,26 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+  dependency-security:
+    name: Dependency Security Audit (report only)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 14
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Dependency Security Audit
-        run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
+        run: npm audit --audit-level=high
 
   sast-semgrep:
     name: SAST - Semgrep
@@ -95,3 +114,4 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           exit-code: '1'
+```

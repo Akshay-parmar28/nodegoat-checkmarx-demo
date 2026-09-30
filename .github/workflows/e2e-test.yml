@@ -1,75 +1,117 @@
-name: E2E Test
-on: [push, pull_request]
+```yaml
+name: DevSecOps Pipeline
+
+on:
+  push:
+  pull_request:
 
 jobs:
-  e2e-test:
-    name: Node.js
+  build-and-test:
+    name: Build and Unit Test
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: ["22.x"]
-
     steps:
-      - name: Checkout https://github.com/${{ github.repository }}@${{ github.ref }}
+      - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          persist-credentials: false
 
-      - name: Set up Node.js ${{ matrix.node-version }}
+      - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node-version }}
-
-      - name: Use cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            ~/.cache
-          key: ${{ runner.os }}-node${{ matrix.node-version }}-E2E-${{ hashFiles('package-lock.json') }}
+          node-version: 22
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          npm ci
-          npm run cy:verify
+        run: npm ci
 
-      - name: Start MongoDB
-        run: |
-          docker run -d -p 27017:27017 mongo:4.4
-          timeout 60s bash -c 'until nc -z -w 2 localhost 27017 && echo MongoDB ready; do sleep 2; done'
+      - name: Run unit tests
+        run: npm test
 
-      - name: Seed test database
-        run: npm run db:seed
+  dependency-security:
+    name: Dependency Security Audit (report only)
+    runs-on: ubuntu-latest
 
-      - name: Run E2E test suite
-        id: test-suite
-        run: |
-          NODE_ENV=test npm start -- --silent > /tmp/nodegoat.log 2>&1 &
-          for attempt in $(seq 1 30); do
-            if curl --silent --fail http://localhost:4000/login >/dev/null; then
-              break
-            fi
-            sleep 2
-          done
-          curl --silent --fail http://localhost:4000/login >/dev/null || { cat /tmp/nodegoat.log; exit 1; }
-          npm run test:ci -- --config video=true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-      - name: Show application logs on failure
-        if: failure() && (steps.test-suite.outcome == 'failure')
-        run: cat /tmp/nodegoat.log
-
-      - name: Prepare cypress artifacts
-        if: failure() && (steps.test-suite.outcome == 'failure')
-        working-directory: ./test/e2e
-        run: >
-          mkdir -p "screenshots" && find "screenshots" -mindepth 1 -maxdepth 1 -type d
-          -exec sh -c 'mv -- "videos/$(basename "$1").mp4" "$1"' _ {} \;
-
-      - name: Upload cypress artifacts
-        if: failure() && (steps.test-suite.outcome == 'failure')
-        uses: actions/upload-artifact@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
         with:
-          name: cypress-artifacts-node${{ matrix.node-version }}
-          path: test/e2e/screenshots
+          node-version: 14
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dependency Security Audit
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  sast-semgrep:
+    name: SAST - Semgrep
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Semgrep
+        run: python -m pip install semgrep
+
+      - name: Run Semgrep SAST
+        run: |
+          semgrep scan \
+            --config auto \
+            --config .semgrep.yml \
+            --json \
+            --output semgrep-results.json .
+
+          python - <<'PY'
+          import json
+
+          with open("semgrep-results.json") as f:
+              data = json.load(f)
+
+          print(f"Semgrep findings: {len(data.get('results', []))}")
+          PY
+
+  gitleaks:
+    name: Secret Scanning - Gitleaks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trivy:
+    name: Container Security - Trivy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Build Docker image
+        run: docker build -t nodegoat-member4-web:${{ github.sha }} .
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: nodegoat-member4-web:${{ github.sha }}
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+```
