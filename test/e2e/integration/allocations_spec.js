@@ -28,7 +28,7 @@ describe("/allocations behaviour", () => {
     cy.get("input[name='threshold']");
   });
 
-  it("Should redirect the user", () => {
+  it("Should use the authenticated user's allocation URL", () => {
     const threshold = 2;
     cy.userSignIn();
     cy.visitPage("/allocations/1");
@@ -42,7 +42,7 @@ describe("/allocations behaviour", () => {
 
     cy.location().should((loc) => {
       expect(loc.search).to.eq(`?threshold=${threshold}`);
-      expect(loc.pathname).to.eq("/allocations/1");
+      expect(loc.pathname).to.eq("/allocations/2");
     });
   });
 });
