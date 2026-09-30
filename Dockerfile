@@ -1,11 +1,11 @@
-FROM node:16-alpine
-RUN apk add --no-cache ca-certificates
+FROM node:22-alpine AS dependencies
 ENV WORKDIR /usr/src/app/
 WORKDIR $WORKDIR
 COPY package*.json $WORKDIR
-RUN npm install --production
+RUN npm ci --omit=dev
 
-FROM node:12-alpine
+FROM node:22-alpine
+RUN apk add --no-cache ca-certificates
 ENV USER node
 ENV WORKDIR /home/$USER/app
 WORKDIR $WORKDIR

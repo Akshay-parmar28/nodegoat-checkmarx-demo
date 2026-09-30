@@ -6,11 +6,12 @@ const bodyParser = require("body-parser");
 const session = require("express-session");
 // const csrf = require('csurf');
 const consolidate = require("consolidate"); // Templating library adapter for Express
-const swig = require("swig");
+const nunjucks = require("nunjucks");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
-const marked = require("marked");
+const { marked } = require("marked");
+const sanitizeHtml = require("sanitize-html");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
@@ -27,13 +28,14 @@ const httpsOptions = {
 };
 */
 
-MongoClient.connect(db, (err, db) => {
+MongoClient.connect(db, (err, client) => {
     if (err) {
         console.log("Error: DB: connect");
         console.log(err);
         process.exit(1);
     }
     console.log(`Connected to the database`);
+    const database = client.db();
 
     /*
     // Fix for A5 - Security MisConfig
@@ -113,7 +115,7 @@ MongoClient.connect(db, (err, db) => {
     */
 
     // Register templating engine
-    app.engine(".html", consolidate.swig);
+    app.engine(".html", consolidate.nunjucks);
     app.set("view engine", "html");
     app.set("views", `${__dirname}/app/views`);
     // Fix for A5 - Security MisConfig
@@ -123,18 +125,15 @@ MongoClient.connect(db, (err, db) => {
 
     // Initializing marked library
     // Fix for A9 - Insecure Dependencies
-    marked.setOptions({
-        sanitize: true
-    });
-    app.locals.marked = marked;
+    app.locals.marked = (markdown) => sanitizeHtml(marked.parse(markdown));
 
     // Application routes
-    routes(app, db);
+    routes(app, database);
 
     // Template system setup
-    swig.setDefaults({
+    nunjucks.configure(`${__dirname}/app/views`, {
         // Autoescape disabled
-        autoescape: false
+        autoescape: false,
         /*
         // Fix for A3 - XSS, enable auto escaping
         autoescape: true // default value

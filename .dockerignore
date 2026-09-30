@@ -4,6 +4,10 @@ docker-compose.yml
 .git
 .github
 .gitignore
+.semgrep-env/
+trivy-*.txt
+.env
+.env.*
 artifacts/cert/server.key
 node_modules
 artifacts/cert/server.key.backup

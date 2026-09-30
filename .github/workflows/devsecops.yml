@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 14
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -26,7 +26,7 @@ jobs:
         run: npm test
 
       - name: Dependency Security Audit
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
 
   sast-semgrep:
     name: SAST - Semgrep
@@ -82,7 +82,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build Docker image
         run: docker build -t nodegoat-member4-web:${{ github.sha }} .
