@@ -1,0 +1,22 @@
+﻿Member 2 - IDOR scan evidence
+
+These scans were collected retrospectively from historical Git commits.
+
+Before-fix commit: 6052e353bfb2ccc9ff5a24e3c6e4cbc457a2f390
+After-fix commit: d7cca0e4de9cf3765ea4a74c0217426aa07ffd39
+
+Scanner: Semgrep 1.177.0
+Image: semgrep/semgrep@sha256:acaac22ffc7b7cc5926de0751b223bce0b2491c33d18422fa72f632c78d81198
+Rule file: idor-rule.yml
+Rule type: Project-specific custom pattern rule
+Scope: app/routes/allocations.js
+
+Before-fix findings: 1
+After-fix findings: 0
+Both scans completed successfully.
+
+Fix: Select the user ID from req.session instead of req.params.
+
+Limitation: This rule detects the specific URL-based lookup pattern.
+Zero findings does not establish that the whole application is secure.
+Browser exploit/retest evidence is recorded separately.

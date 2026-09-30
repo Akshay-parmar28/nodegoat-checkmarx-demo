@@ -1,0 +1,10 @@
+﻿rules:
+  - id: nodegoat-allocations-url-user-id
+    languages: [javascript]
+    severity: WARNING
+    message: Review URL-controlled userId used to select allocation records; enforce ownership using the authenticated session.
+    paths:
+      include:
+        - "**/app/routes/allocations.js"
+    pattern: |
+      const { userId } = req.params;
