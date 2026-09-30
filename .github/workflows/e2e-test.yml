@@ -4,7 +4,7 @@ on: [push, pull_request]
 jobs:
   e2e-test:
     name: Node.js
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
@@ -29,6 +29,11 @@ jobs:
             ~/.npm
             ~/.cache
           key: ${{ runner.os }}-node${{ matrix.node-version }}-E2E-${{ hashFiles('package-lock.json') }}
+
+      - name: Install legacy Cypress system dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgconf-2-4
 
       - name: Install dependencies
         run: |
