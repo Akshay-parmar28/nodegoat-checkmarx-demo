@@ -28,7 +28,7 @@ describe("/allocations behaviour", () => {
     cy.get("input[name='threshold']");
   });
 
-  it("Should redirect the user", () => {
+  it("Should use the authenticated user's allocation URL", () => {
     const threshold = 2;
     cy.userSignIn();
     cy.visitPage("/allocations/1");
