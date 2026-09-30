@@ -1,162 +1,152 @@
-# NodeGoat
+# Setup instructions for group members
 
-Being lightweight, fast, and scalable, Node.js is becoming a widely adopted platform for developing web applications. This project provides an environment to learn how OWASP Top 10 security risks apply to web applications developed using Node.js and how to effectively address them.
+### Step 1 - install Node.js, Docker & Git. Node.js runs NodeGoat, Docker is needed to run it in containers (app + MongoDB), Git is for committing and pushing to GitHub (you may have to add your GitHub account credentials to local git if not already added. Also you might have to setup an SSH key to push changes to github)
+---
+1. Install [Node.js](https://nodejs.org/) (LTS 24.19.0 version), [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Engine and Compose), and Git.
 
-## Getting Started
+2. check with `node --version`, `docker --version` and `docker compose version`
 
-OWASP Top 10 for Node.js web applications:
+3. Install WSL (this is needed for Docker Desktop to work). Run `wsl --install` in cmd.
 
-### Know it!
+   Give a username and password when installation asks for it.
 
-This application bundled a tutorial page that explains the OWASP Top 10 vulnerabilities and how to fix them.
+   Restart pc after completion.
 
-Once the application is running, you can access the tutorial page at [http://localhost:4000/tutorial](http://localhost:4000/tutorial) (or the port you have configured).
+### step 2 - Downloading NodeGoat project to your PC to work on it. NodeGoat runs directly from source with Node.js. Docker is only needed to bring up the full app + database together, or to test the final containerised setup before committing.
+---
 
-### Do it!
+4. open CMD in desktop run this to clone the repo:
 
-[A Vulnerable Node.js App for Ninjas](http://nodegoat.herokuapp.com/) to exploit, toast, and fix. You may like to [set up your own copy](#how-to-set-up-your-copy-of-nodegoat) of the app to fix and test vulnerabilities. Hint: Look for comments in the source code.
+    ```git clone https://github.com/Ravindu-orzo/NodeGoat.git```
 
-##### Default user accounts
+### step 3 - install dependencies. we just install NodeGoat's npm packages.
+---
 
-The database comes pre-populated with these user accounts created as part of the seed data -
-* Admin Account - u:`admin` p:`Admin_123`
-* User Accounts (u:`user1` p:`User1_123`), (u:`user2` p:`User2_123`)
-* New users can also be added using the sign-up page.
+5. move into the project folder: ```cd NodeGoat```
 
-## How to Set Up Your Copy of NodeGoat
+6. install all dependencies:
 
-### OPTION 1 - Run NodeGoat on your machine
+    ```npm install```
 
-1) Install [Node.js](http://nodejs.org/) - NodeGoat requires Node v8 or above
+### step 4 - Making the Docker images and running them with Docker Desktop. NodeGoat's docker-compose brings up TWO containers: the app and a separate MongoDB instance, connected together.
 
-2) Clone the github repository:
-   ```
-   git clone https://github.com/OWASP/NodeGoat.git
-   ```
+7. open start menu and run Docker Desktop.
 
-3) Go to the directory:
-   ```
-   cd NodeGoat
-   ```
+    skip adding an account. then let docker engine start
 
-4) Install node packages:
-   ```
-   npm install
-   ```
+8. build the images:
 
-5) Set up MongoDB. You can either install MongoDB locally or create a remote instance:
+    ```docker-compose build```
 
-   * Using local MongoDB:
-     1) Install [MongoDB Community Server](https://docs.mongodb.com/manual/administration/install-community/)
-     2) Start [mongod](http://docs.mongodb.org/manual/reference/program/mongod/#bin.mongod)
+9. run the app:
 
-   * Using remote MongoDB instance:
-     1) [Deploy a MongoDB Atlas free tier cluster](https://docs.atlas.mongodb.com/tutorial/deploy-free-tier-cluster/) (M0 Sandbox)
-     2) [Enable network access](https://docs.atlas.mongodb.com/security/add-ip-address-to-list/) to the cluster from your current IP address
-     3) [Add a database user](https://docs.atlas.mongodb.com/tutorial/create-mongodb-user-for-cluster/) to the cluster
-     4) Set the `MONGODB_URI` environment variable to the connection string of your cluster, which can be viewed in the cluster's
-        [connect dialog](https://docs.atlas.mongodb.com/tutorial/connect-to-your-cluster/#connect-to-your-atlas-cluster). Select "Connect your application",
-        set the driver to "Node.js" and the version to "2.2.12 or later". This will give a connection string in the form:
-        ```
-        mongodb://<username>:<password>@<cluster>/<dbname>?ssl=true&replicaSet=<rsname>&authSource=admin&retryWrites=true&w=majority
-        ```
-        The `<username>` and `<password>` fields need filling in with the details of the database user added earlier. The `<dbname>` field sets the name of the
-        database nodegoat will use in the cluster (eg "nodegoat"). The other fields will already be filled in with the correct details for your cluster.
+    ```docker-compose up```
 
-6) Populate MongoDB with the seed data required for the app:
-   ```
-   npm run db:seed
-   ```
-   By default this will use the "development" configuration, but the desired config can be passed as an argument if required.
+    then go to ```http://localhost:4000``` . see if NodeGoat opens up in the browser
 
-7) Start the server. You can run the server using node or nodemon:
-   * Start the server with node. This starts the NodeGoat application at [http://localhost:4000/](http://localhost:4000/):
-     ```
-     npm start
-     ```
-   * Start the server with nodemon, which will automatically restart the application when you make any changes. This starts the NodeGoat application at [http://localhost:5000/](http://localhost:5000/):
-     ```
-     npm run dev
-     ```
+    - Default test accounts (seeded into MongoDB): `admin` / `Admin_123`, `user1` / `User1_123`, `user2` / `User2_123`
+    - If the database looks empty (no login works), the seed script may need to be run manually inside the container:
+      ```docker-compose exec web node artifacts/db-reset.js```
 
-#### Customizing the Default Application Configuration
+10. Once you have tested if it works, turn NodeGoat off:
 
-By default the application will be hosted on port 4000 and will connect to a MongoDB instance at localhost:27017. To change this set the environment variables `PORT` and `MONGODB_URI`.
+    ```docker-compose down```
 
-Other settings can be changed by updating the [config file](https://github.com/OWASP/NodeGoat/blob/master/config/env/all.js).
+### Step 5 - Each group member should make their own branch! do not make any changes to the main branch. make your own branch, commit & push changes to that branch during the vulnerability patching process.
+---
+11. Open CMD inside the NodeGoat folder and run this to make a branch with your IT number as the name:
 
-### OPTION 2 - Run NodeGoat on Docker
+     ```git checkout -b ITXXXXXXX```
 
-The repo includes the Dockerfile and docker-compose.yml necessary to set up the app and db instance, then connect them together.
+     this automatically moves you into that branch as well.
 
-1) Install [docker](https://docs.docker.com/installation/) and [docker compose](https://docs.docker.com/compose/install/) 
+     you can always check which branch you are on by running `git branch`
 
-2) Clone the github repository:
-   ```
-   git clone https://github.com/OWASP/NodeGoat.git
-   ```
+12. push your newly made branch to github (you made the branch in local repo, you now have to update github about it)
 
-3) Go to the directory:
-   ```
-   cd NodeGoat
-   ```
+    `git push -u origin (your branch name)`
 
-4) Build the images:
-   ```
+    ex: `git push -u origin IT24103645`
+
+##### Important: you can just run NodeGoat directly with `npm run dev` inside INTELLIJ ULTIMATE (auto-restarts on file changes via nodemon) and skip Docker entirely while coding. Only use Docker when you want to test the fully containerised setup or before committing changes to github.
+
+### step 6 - Run locally for fast iteration (no Docker needed). Do these steps inside Intellij Ultimate terminal.
+---
+
+13. make sure MongoDB is available. Easiest option: start just the mongo container from the compose file:
+
+    ```docker-compose up -d mongo```
+
+14. seed the database once (first time only):
+
+    ```npm run db:seed```
+
+15. run the app with auto-restart on changes:
+
+    ```npm run dev```
+
+    this starts NodeGoat at ```http://localhost:5000```
+
+### step 7 - daily workflow
+---
+
+```
+1. Start Docker Desktop (only mongo container needed for local dev)
+   docker-compose up mongo
+
+2. Make sure you're on your own branch
+   git checkout ITXXXXXXX
+
+3. Pull/sync if necessary
+   git pull
+
+4. Make code changes in your editor --> run with `npm run dev` to test changes live (no build step)
+
+5. When ready to commit, verify the full containerised app still works:
    docker-compose build
-   ```
-
-5) Run the app, this starts the NodeGoat application at http://localhost:4000/:
-   ```
    docker-compose up
-   ```
 
-### OPTION 3 - Deploy to Heroku
+6. Test NodeGoat
+   http://localhost:4000
 
-This option uses a free ($0/month) Heroku node server.
+7. Stop containers
+   docker-compose down
 
-Though not essential, it is recommended that you fork this repository and deploy the forked repo.
-This will allow you to fix vulnerabilities in your own forked version, then deploy and test it on Heroku.
+8. Commit changes to local repository
+   git add .
+   git commit -m "..."
 
-1) Set up a publicly accessible MongoDB instance:
-   1) [Deploy a MongoDB Atlas free tier cluster](https://docs.atlas.mongodb.com/tutorial/deploy-free-tier-cluster/) (M0 Sandbox)
-   2) [Enable network access](https://docs.atlas.mongodb.com/security/ip-access-list/#add-ip-access-list-entries) to the cluster from anywhere (CIDR range 0.0.0.0/0)
-   3) [Add a database user](https://docs.atlas.mongodb.com/tutorial/create-mongodb-user-for-cluster/) to the cluster
+9. Sync remote repository (Github) with changes in your local repository
+   git push
+```
 
-2) Deploy NodeGoat to Heroku by clicking the button below:
+##### EXTRA: Daily workflow git commands explained
+1. ready up changed files for saving to local repo : `git add .`
+2. save the changed files to local repo : `git commit -m "commit msg eka"`
 
-   [![Deploy](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
+    ex: `git commit -m "added authentication to login form"`
+3. sync local repo with remote repo (github repo) : `git push`
 
-   In the Create New App dialog, set the `MONGODB_URI` config var to the connection string of your MongoDB Atlas cluster.
-   This can be viewed in the cluster's [connect dialog](https://docs.atlas.mongodb.com/tutorial/connect-to-your-cluster/#connect-to-your-atlas-cluster).
-   Select "Connect your application", set the driver to "Node.js" and the version to "2.2.12 or later".
-   This will give a connection string in the form:
-   ```
-   mongodb://<username>:<password>@<cluster>/<dbname>?ssl=true&replicaSet=<rsname>&authSource=admin&retryWrites=true&w=majority
-   ```
-   The `<username>` and `<password>` fields need filling in with the details of the database user added earlier. The `<dbname>` field sets the name of the
-   database nodegoat will use in the cluster (eg "nodegoat"). The other fields will already be filled in with the correct details for your cluster.
+##### EXTRA: Little about Docker (SELF NOTE):
+- docker is preferred as it runs applications immediately without having to setup dependencies
+- how it does this is package the app & its dependencies together and run that docker image, which spawns a VM-like environment called a docker container.
+- Main components of docker ecosystem: Docker file, Docker image, Docker engine, Docker container.
+- `docker file` is a script telling how to build a `docker image` by packaging the application & its dependencies together.
+- `docker image` contains the final build of the application, its dependencies & info needed to spawn a container, packaged together.
+- `docker engine` spawns a `docker container` from this `docker image`.
+- app runs comfortably within the container as it has all the dependencies needed.
+- NodeGoat's compose setup spawns **two** containers (app + mongo) that talk to each other over Docker's internal network — this is what gives us the "two separate components" the assignment requires, unlike WebGoat's single container with an embedded database.
 
-## Report bugs, Feedback, Comments
-
-*  Open a new [issue](https://github.com/OWASP/NodeGoat/issues) or contact team by joining chat at [Slack](https://owasp.slack.com/messages/project-nodegoat/) or [![Join the chat at https://gitter.im/OWASP/NodeGoat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/OWASP/NodeGoat?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-## Contributing
-
-Please Follow [the contributing guide](CONTRIBUTING.md)
-
-## Code Of Conduct (CoC)
-
-This project is bound by a [Code of Conduct](CODE_OF_CONDUCT.md).
-
-## Contributors
-
-Here are the amazing [contributors](https://github.com/OWASP/NodeGoat/graphs/contributors) to the NodeGoat project.
-
-## Supports
-
-- Thanks to JetBrains for providing licenses to fantastic [WebStorm IDE](https://www.jetbrains.com/webstorm/) to build this project.
-
-## License
-
-Code licensed under the [Apache License v2.0.](http://www.apache.org/licenses/LICENSE-2.0)
+```
+NodeGoat source code (this is what we edit)
+       ↓
+   npm install (fetches dependencies — no build step)
+       ↓
+   Dockerfile(s) + docker-compose.yml
+       ↓
+   Docker images (app image + official mongo image)
+       ↓
+   Two Docker containers (app <--> mongo), networked together
+       ↓
+   NodeGoat running at localhost:4000
+```
