@@ -1,0 +1,8 @@
+rules:
+  - id: nodegoat-ssjs-eval
+    languages:
+      - javascript
+    message: "Potential Server-Side JavaScript Injection: user-controlled request body is passed to eval()."
+    severity: ERROR
+    patterns:
+      - pattern: eval(req.body.$FIELD)
