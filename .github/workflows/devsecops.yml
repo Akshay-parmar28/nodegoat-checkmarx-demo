@@ -93,6 +93,9 @@ jobs:
 
       # --- GATE 5: DAST SCANNING (Warn only) ---
       - name: Start NodeGoat Stack
+        env:
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
         run: |
           docker compose up -d --build
 
@@ -121,4 +124,7 @@ jobs:
         
       - name: Stop NodeGoat Stack
         if: always()
+        env:
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
         run: docker compose down -v
