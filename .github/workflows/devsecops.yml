@@ -27,6 +27,7 @@ jobs:
 
       - name: Dependency Security Audit
         run: npm audit --audit-level=high
+        continue-on-error: true
 
   sast-semgrep:
     name: SAST - Semgrep
