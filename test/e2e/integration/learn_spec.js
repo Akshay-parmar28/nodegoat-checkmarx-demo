@@ -14,7 +14,13 @@ describe("/learn behaviour", () => {
 
   it("Should be accesible for a logged user", () => {
     cy.userSignIn();
-    cy.visitPage("/learn?url=/dashboard");
-    cy.url().should("include", "dashboard");
+    cy.visitPage("/learn?url=/tutorial");
+    cy.url().should("include", "tutorial");
+  });
+
+  it("Should reject redirects to unapproved destinations", () => {
+    cy.userSignIn();
+    cy.visitPage("/learn?url=/dashboard", { failOnStatusCode: false });
+    cy.contains("Invalid redirect URL").should("be.visible");
   });
 });
