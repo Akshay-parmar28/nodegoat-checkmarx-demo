@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:18.0.0-alpine3.15
 ENV WORKDIR /usr/src/app/
 WORKDIR $WORKDIR
 COPY package*.json $WORKDIR
@@ -6,7 +6,7 @@ RUN apk add --no-cache ca-certificates && update-ca-certificates
 RUN npm install --production --no-cache
 RUN npm install mongodb --no-cache
 
-FROM node:18-alpine
+FROM node:18.0.0-alpine3.15
 ENV USER node
 ENV WORKDIR /home/$USER/app
 WORKDIR $WORKDIR
