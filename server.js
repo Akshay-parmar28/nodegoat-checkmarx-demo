@@ -5,12 +5,12 @@ const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
 const session = require("express-session");
 // const csrf = require('csurf');
-const consolidate = require("consolidate"); // Templating library adapter for Express
-const swig = require("swig");
+const nunjucks = require("nunjucks");
 // const helmet = require("helmet");
 const MongoClient = require("mongodb").MongoClient; // Driver for connecting to MongoDB
 const http = require("http");
-const marked = require("marked");
+const { marked } = require("marked");
+const sanitizeHtml = require("sanitize-html");
 //const nosniff = require('dont-sniff-mimetype');
 const app = express(); // Web framework to handle routing requests
 const routes = require("./app/routes");
@@ -27,13 +27,14 @@ const httpsOptions = {
 };
 */
 
-MongoClient.connect(db, (err, db) => {
+MongoClient.connect(db, (err, client) => {
     if (err) {
         console.log("Error: DB: connect");
         console.log(err);
         process.exit(1);
     }
     console.log(`Connected to the database`);
+    const database = client.db();
 
     /*
     // Fix for A5 - Security MisConfig
@@ -112,10 +113,21 @@ MongoClient.connect(db, (err, db) => {
     });
     */
 
-    // Register templating engine
-    app.engine(".html", consolidate.swig);
+    // Configure Nunjucks directly so Express does not reset the template options.
+    const viewsPath = `${__dirname}/app/views`;
+    const nunjucksEnv = nunjucks.configure(viewsPath, {
+        // Autoescape disabled
+        autoescape: false,
+        /*
+        // Fix for A3 - XSS, enable auto escaping
+        autoescape: true // default value
+        */
+    });
+    app.engine("html", (filename, options, callback) => {
+        nunjucksEnv.render(filename, options, callback);
+    });
     app.set("view engine", "html");
-    app.set("views", `${__dirname}/app/views`);
+    app.set("views", viewsPath);
     // Fix for A5 - Security MisConfig
     // TODO: make sure assets are declared before app.use(session())
     app.use(express.static(`${__dirname}/app/assets`));
@@ -123,23 +135,10 @@ MongoClient.connect(db, (err, db) => {
 
     // Initializing marked library
     // Fix for A9 - Insecure Dependencies
-    marked.setOptions({
-        sanitize: true
-    });
-    app.locals.marked = marked;
+    app.locals.marked = (markdown) => sanitizeHtml(marked.parse(markdown));
 
     // Application routes
-    routes(app, db);
-
-    // Template system setup
-    swig.setDefaults({
-        // Autoescape disabled
-        autoescape: false
-        /*
-        // Fix for A3 - XSS, enable auto escaping
-        autoescape: true // default value
-        */
-    });
+    routes(app, database);
 
     // Insecure HTTP connection
     http.createServer(app).listen(port, () => {
