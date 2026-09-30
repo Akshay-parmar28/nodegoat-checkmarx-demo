@@ -1,0 +1,130 @@
+name: DevSecOps Security Pipeline
+
+on:
+  push:
+    branches: [ "main", "master", "dev" ]
+  pull_request:
+    branches: [ "main", "master", "dev" ]
+
+# Added so that DAST scan can write post its results to github issues
+permissions:
+  contents: read
+  issues: write
+  security-events: write # Required for CodeQL to write findings to GitHub Security tab
+
+jobs:
+  security-gates:
+    name: DevSecOps Security Gates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # --- GATE 3a: SECRETS SCANNING (Working tree - STRICT GATE - FAILS THE BUILD) ---
+      # Runs before npm ci so node_modules is not scanned.
+      # Catches secrets that already exist in files (e.g. a committed private key),
+      # which the commit-range scan below can miss.
+      - name: Secrets Scan (Gitleaks CLI - working tree)
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source /repo --no-git --redact --verbose --exit-code 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x' # Upgraded from 14.x for setup-node@v4 runner compatibility
+
+      - name: Install Application Dependencies
+        run: npm ci
+
+      # --- GATE 1: SAST SCANNING (Full Repo - Warn only) ---
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: 'javascript-typescript'
+
+      - name: Install Semgrep
+        run: python3 -m pip install --upgrade semgrep
+
+      - name: SAST Scan 1 (Semgrep)
+        continue-on-error: true # Logs findings across the full repo but allows pipeline to continue
+        run: |
+          semgrep scan \
+            --config p/expressjs \
+            --config p/javascript \
+            --config p/nodejs \
+            --error \
+            .
+
+      - name: SAST Scan 2 (CodeQL)
+        uses: github/codeql-action/analyze@v3
+        continue-on-error: true # Logs findings but allows pipeline execution to continue
+
+      # --- GATE 2: DEPENDENCY SCANNING (Warn only) ---
+      - name: Dependency Audit (npm audit)
+        run: npm audit || true # '|| true' ignores non-zero exit codes to prevent build failure
+
+      # --- GATE 3b: SECRETS SCANNING (Commit range - STRICT GATE - FAILS THE BUILD) ---
+      - name: Secrets Scan (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Scans the commits in the push / pull request and fails on secrets detection
+
+      # --- GATE 4: CONTAINER IMAGE SCANNING (Warn only) ---
+      - name: Build Docker Container Image
+        run: docker build -t my-app:${{ github.sha }} .
+
+      - name: Container Image Vulnerability Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'my-app:${{ github.sha }}'
+          format: 'table'
+          exit-code: '0' # '0' prints vulnerability table without triggering a build failure
+          severity: 'CRITICAL,HIGH'
+
+      # --- GATE 5: DAST SCANNING (Warn only) ---
+      - name: Start NodeGoat Stack
+        env:
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
+        run: |
+          docker compose up -d --build
+
+          echo "Waiting for NodeGoat..."
+
+          for i in {1..30}; do
+            if curl --fail http://localhost:4000 > /dev/null 2>&1; then
+              echo "NodeGoat is ready"
+              exit 0
+            fi
+
+            echo "Waiting for NodeGoat... ($i/30)"
+            sleep 2
+          done
+          
+          echo "NodeGoat failed to start"
+          docker compose ps
+          docker compose logs
+          exit 1
+
+      - name: OWASP ZAP DAST Scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: 'http://localhost:4000'
+          fail_action: false
+        
+      - name: Stop NodeGoat Stack
+        if: always()
+        env:
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
+        run: docker compose down -v
