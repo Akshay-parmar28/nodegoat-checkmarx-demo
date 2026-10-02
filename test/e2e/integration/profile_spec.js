@@ -58,6 +58,24 @@ describe("/profile behaviour", () => {
       .should("eq", newName);
     */
   });
+    it("Should reject bank routing numbers with extra characters outside the pattern", () => {
+    const invalidBankRouting = "evil0198212#evil";
+    cy.userSignIn();
+    cy.visitPage("/profile");
+
+    cy.get("#bankRouting")
+      .clear()
+      .type(invalidBankRouting);
+
+    cy.get("button[type='submit']")
+      .first()
+      .click();
+
+    cy.url().should("include", "profile");
+
+    cy.get(".alert-danger")
+      .should("be.visible");
+  });
 
   it("Google search this profile by name", () => {
     cy.userSignIn();
