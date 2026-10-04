@@ -1,0 +1,45 @@
+# KICS - Infrastructure as Code scanning
+# Scans Dockerfile, docker-compose.yml, app.json and the GitHub workflow files themselves.
+# Results go to: PR comment + annotations, Security > Code scanning (SARIF), and the job summary.
+name: KICS IaC scan
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write      # PR comment with the results table
+  security-events: write    # upload SARIF to Code scanning
+
+jobs:
+  kics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Create results folder
+        run: mkdir -p kics-results
+
+      - name: Run KICS
+        uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
+        with:
+          path: "."
+          token: ${{ secrets.GITHUB_TOKEN }}
+          output_path: kics-results
+          output_formats: "json,sarif"
+          enable_comments: true
+          enable_jobs_summary: true
+          enable_annotations: true
+          # Policy gate: only HIGH findings break the build, everything else is reported
+          fail_on: high
+
+      - name: Upload SARIF to GitHub Code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3.38.2
+        with:
+          sarif_file: kics-results/results.sarif
+          category: kics
