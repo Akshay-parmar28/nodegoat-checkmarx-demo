@@ -32,7 +32,7 @@ function ContributionsHandler(db) {
         const preTax = eval(req.body.preTax);
         const afterTax = eval(req.body.afterTax);
         const roth = eval(req.body.roth);
-
+/* This is comment for Vorpal scan to run. */
         /*
         //Fix for A1 -1 SSJS Injection attacks - uses alternate method to eval
         const preTax = parseInt(req.body.preTax);
