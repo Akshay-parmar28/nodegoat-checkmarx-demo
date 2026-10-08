@@ -3,6 +3,14 @@ version: "3.7"
 services:
   web:
     build: .
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     environment:
       NODE_ENV:
       MONGODB_URI: mongodb://mongo:27017/nodegoat
