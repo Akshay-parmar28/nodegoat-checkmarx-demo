@@ -27,13 +27,11 @@ function ContributionsHandler(db) {
 
     this.handleContributionsUpdate = (req, res, next) => {
 
-        /*jslint evil: true */
-        // Fix: parseInt instead of eval, so user input is never executed as code
+        // Fix for A1 SSJS injection: parseInt instead of eval, so user input is never executed as code
         const preTax = parseInt(req.body.preTax, 10);
         const afterTax = parseInt(req.body.afterTax, 10);
         const roth = parseInt(req.body.roth, 10);
-/* This is comment for Vorpal scan to run. */
-    /* this is second test commnent*/
+
         const {
             userId
         } = req.session;
