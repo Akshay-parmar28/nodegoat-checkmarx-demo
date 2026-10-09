@@ -1,6 +1,7 @@
 # KICS - Infrastructure as Code scanning
 # Scans the Azure Terraform in infra/, the Dockerfile, docker-compose.yml and the GitHub workflow files.
-# Results go to: PR comment + annotations, Security > Code scanning (SARIF), and the job summary.
+# Results go to: PR comment + annotations, Security > Code scanning (SARIF), the job summary,
+# and a downloadable "kics-reports" artifact (JSON, SARIF and a readable HTML report).
 name: KICS IaC scan
 
 on:
@@ -32,7 +33,7 @@ jobs:
           path: "."
           token: ${{ secrets.GITHUB_TOKEN }}
           output_path: kics-results
-          output_formats: "json,sarif"
+          output_formats: "json,sarif,html"
           # A PR comment only makes sense on a pull request. On a push there is no PR,
           # and the failed comment call would also skip the pass/fail decision below.
           enable_comments: ${{ github.event_name == 'pull_request' }}
@@ -48,3 +49,12 @@ jobs:
         with:
           sarif_file: kics-results/results.sarif
           category: kics
+
+      - name: Keep the full reports
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: kics-reports
+          path: kics-results/
+          retention-days: 30
+          if-no-files-found: error   # a run without a report is a failed run

@@ -4,15 +4,16 @@ This copy of [OWASP NodeGoat](https://github.com/OWASP/NodeGoat) shows three Che
 
 | Tool | What it checks | When it runs | What blocks a merge | Where to see results |
 |---|---|---|---|---|
-| **KICS** | Infrastructure as Code: the Azure Terraform in `infra/`, `Dockerfile`, `docker-compose.yml`, workflow files | Every pull request and every push to `master` | Any **Critical** or **High** finding | PR comment and annotations, job summary, **Security > Code scanning** |
-| **Vorpal** | Secure-coding issues in the JavaScript and Python lines a pull request adds | Every pull request | Any finding on an added line | Review comments on the exact lines in the PR |
-| **2ms** (Too Many Secrets) | Passwords, keys and tokens in the current files and in the full git history | Every pull request and every push to `master` | Any secret in the **current** files (history is reported, not blocking) | Job summary (with the commit for each historical secret), **Security > Code scanning** |
+| **KICS** | Infrastructure as Code: the Azure Terraform in `infra/`, `Dockerfile`, `docker-compose.yml`, workflow files | Every pull request and every push to `master` | Any **Critical** or **High** finding | PR comment and annotations, job summary, **Security > Code scanning**, downloadable `kics-reports` (JSON, SARIF, HTML) |
+| **Vorpal** | Secure-coding issues in C#, Go, Java, JavaScript and Python files. Every tracked source file is scanned for the report; the lines a pull request adds are the gate | Every pull request and every push to `master` | Any finding on a line the pull request adds | Review comments on the exact lines in the PR, job summary, **Security > Code scanning**, downloadable `vorpal-reports` (JSON, SARIF) |
+| **2ms** (Too Many Secrets) | Passwords, keys and tokens in the current files and in the full git history | Every pull request and every push to `master` | Any secret in the **current** files (history is reported, not blocking) | Job summary (current files, plus history with the commit for each historical secret), **Security > Code scanning**, downloadable `2ms-reports` (JSON, SARIF) |
 
 How it fits together:
 
 - **Shift left, automatically.** Each tool runs as a GitHub Action in seconds, so a developer gets feedback in their own pull request with no manual step.
 - **Enforced, not advisory.** A ruleset on `master` requires the `kics`, `vorpal` and `secrets` checks to pass before a pull request can merge.
-- **Low noise.** Vorpal reports only on the lines a developer adds, third-party code is ignored, KICS blocks only on Critical and High, and a triaged 2ms false positive is suppressed.
+- **A report on every run.** Each tool writes a job summary and a downloadable report (open a run, scroll to **Artifacts**), and the run fails if its report is missing. Vorpal's full scan is a report only, so old NodeGoat code never blocks a new pull request.
+- **Low noise.** Vorpal blocks only on the lines a developer adds, third-party code is ignored, KICS blocks only on Critical and High, and a triaged 2ms false positive is suppressed.
 - **The pipeline protects itself too.** Every action is pinned to an exact commit, each workflow has only the permissions it needs, the 2ms download is checksum-verified, and secret values are removed from every report before it is uploaded.
 - **Deleted is not gone.** 2ms keeps scanning git history, because a secret removed from the code still sits in old commits. The fix is to rotate it and keep it in a vault; `infra/` shows the Azure Key Vault pattern.
 

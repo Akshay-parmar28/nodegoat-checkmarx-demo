@@ -1,16 +1,33 @@
-# Vorpal - secure-coding checks on the developer's pull request
-# Vorpal scans individual files (Java, JavaScript, C#, Python, Go), so we pass it only the
-# JavaScript and Python files changed in the PR, and it reports only on the lines the developer
-# added. Findings appear as review comments on those lines, and the check fails until they are fixed.
-# Changed files are computed with plain git (no third-party changed-files action).
+# Vorpal - secure-coding checks on every change
+# Vorpal scans one file at a time and supports C#, Go, Java, JavaScript and Python.
+# Two things happen on every run:
+#   1. REPORT: every tracked source file in those languages is scanned, and the results are
+#      written as a job summary, a SARIF file for Security > Code scanning, and a downloadable
+#      artifact (JSON + SARIF + summary). The report never blocks anything.
+#   2. GATE (pull requests only): the files the PR changes go through reviewdog, which comments
+#      on the lines the developer added and fails the check while a finding is open.
+# Source lines are removed from the reports, because a "Hardcoded Tokens" finding quotes the token.
 name: Vorpal code scan
 
 on:
+  push:
+    branches: [master, main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: write   # review comments on the changed lines
+  pull-requests: write     # review comments on the changed lines
+  security-events: write   # upload SARIF to Code scanning
+
+env:
+  # Same Vorpal CLI version the reviewdog action below runs, pinned by digest
+  VORPAL_VERSION: "1.1.4"
+  VORPAL_IMAGE: checkmarx/vorpal-cli:1.1.4@sha256:19c0e856c9c78cf844a25690000510eb23ecbc22f0a33be7b10c052d96872cc7
+  # Every language Vorpal supports (used for both the full scan and the PR gate)
+  VORPAL_PATHSPEC: "*.cs *.go *.java *.js *.jsx *.py"
+  # Third-party code that is not ours to fix
+  VORPAL_IGNORE_REGEX: '^(app/assets/vendor|node_modules)/|/node_modules/'
 
 jobs:
   vorpal:
@@ -22,19 +39,165 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: List changed source files
+      - name: List the source files to scan
+        run: |
+          # Raw per-file results stay outside the workspace, because they quote source lines
+          echo "RAW_DIR=$RUNNER_TEMP/vorpal-raw" >> "$GITHUB_ENV"
+          set -f   # keep the *.ext patterns for git instead of letting the shell expand them
+          git ls-files -- $VORPAL_PATHSPEC | { grep -Ev "$VORPAL_IGNORE_REGEX" || true; } > vorpal-files.txt
+          echo "Source files to scan: $(wc -l < vorpal-files.txt)"
+
+      - name: List changed source files (pull requests)
         id: changed
+        if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          FILES=$(git diff --name-only --diff-filter=ACMR \
-                    "origin/${BASE_REF}...HEAD" -- '*.js' '*.jsx' '*.py' \
+          set -f
+          FILES=$(git diff --name-only --diff-filter=ACMR "origin/${BASE_REF}...HEAD" -- $VORPAL_PATHSPEC \
                   | paste -sd, -)
           echo "Changed source files: ${FILES:-none}"
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
 
+      - name: Scan every source file with Vorpal
+        id: scan
+        run: |
+          mkdir -p "$RAW_DIR" vorpal-results
+          if [ -s vorpal-files.txt ]; then
+            docker run --rm \
+              -v "$PWD:/src:ro" \
+              -v "$PWD/vorpal-files.txt:/files.txt:ro" \
+              -v "$RAW_DIR:/out" \
+              -w /src \
+              --entrypoint sh \
+              "$VORPAL_IMAGE" -c '
+                i=0
+                while IFS= read -r f; do
+                  i=$((i+1))
+                  /app/bin/vorpal -s "$f" -r "/out/$i.json" > /dev/null 2>&1
+                  # Vorpal always exits 0, and writes "null" for a clean file,
+                  # so a missing or empty result file is the only sign of a failed scan
+                  [ -s "/out/$i.json" ] || echo "$f" >> /out/failed.txt
+                done < /files.txt
+              '
+          fi
+          FAILED=0
+          [ -f "$RAW_DIR/failed.txt" ] && FAILED=$(wc -l < "$RAW_DIR/failed.txt")
+          echo "scanned=$(wc -l < vorpal-files.txt)" >> "$GITHUB_OUTPUT"
+          echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
+
+      - name: Build the reports (JSON, SARIF, summary)
+        if: always() && steps.scan.outcome == 'success'
+        env:
+          SCANNED: ${{ steps.scan.outputs.scanned }}
+          FAILED: ${{ steps.scan.outputs.failed }}
+        run: |
+          shopt -s nullglob
+          raw=("$RAW_DIR"/*.json)
+
+          # All findings in one file, without the source lines.
+          # Vorpal writes "null" with no newline for a clean file, and jq joins its input files
+          # into one stream, so a newline is added after each file.
+          if [ ${#raw[@]} -eq 0 ]; then
+            echo '[]' > vorpal-results/findings.json
+          else
+            for f in "${raw[@]}"; do cat "$f"; echo; done \
+              | jq -s 'map(. // []) | add // [] | map(del(.content))' > vorpal-results/findings.json
+          fi
+
+          # SARIF, so the findings show up in Security > Code scanning
+          jq --arg ver "$VORPAL_VERSION" '
+            def sev: {"Critical":"9.5","High":"8.0","Medium":"5.5","Low":"3.0"}[.] // "5.0";
+            def lvl: if . == "Critical" or . == "High" then "error"
+                     elif . == "Medium" then "warning" else "note" end;
+            {
+              "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+              version: "2.1.0",
+              runs: [{
+                tool: { driver: {
+                  name: "Vorpal",
+                  version: $ver,
+                  informationUri: "https://github.com/Checkmarx/vorpal-reviewdog-github-action",
+                  rules: (group_by(.ruleId) | map(.[0] | {
+                    id: "Vorpal-\(.ruleId)",
+                    shortDescription: { text: .rule },
+                    fullDescription: { text: .description },
+                    help: { text: .remediationAdvice },
+                    defaultConfiguration: { level: (.severity | lvl) },
+                    properties: { tags: ["security", "vorpal"], "security-severity": (.severity | sev) }
+                  }))
+                }},
+                results: map({
+                  ruleId: "Vorpal-\(.ruleId)",
+                  level: (.severity | lvl),
+                  message: { text: "\(.rule): \(.remediationAdvice)" },
+                  locations: [{ physicalLocation: {
+                    artifactLocation: { uri: .file },
+                    region: { startLine: (.line | tonumber) }
+                  }}]
+                })
+              }]
+            }' vorpal-results/findings.json > vorpal-results/vorpal.sarif
+
+          # Job summary (also kept in the artifact)
+          by_ext=$(sed -E 's/.*\.([^.]+)$/.\1/' vorpal-files.txt | sort | uniq -c \
+                   | awk '{printf "%s%s %s", sep, $2, $1; sep=", "}')
+          {
+            echo "## Vorpal code scan"
+            echo ""
+            echo "Scanned **${SCANNED}** source files (${by_ext:-none}). Vorpal supports C#, Go, Java, JavaScript and Python."
+            if [ "$FAILED" != "0" ]; then
+              echo ""
+              echo "**${FAILED} file(s) could not be scanned, so this report is incomplete.**"
+            fi
+            echo ""
+            echo "| Severity | Findings |"
+            echo "|---|---|"
+            for s in Critical High Medium Low; do
+              echo "| $s | $(jq --arg s "$s" '[.[] | select(.severity == $s)] | length' vorpal-results/findings.json) |"
+            done
+            echo ""
+            echo "### Findings"
+            echo ""
+            echo "| Rule | Severity | File | Line |"
+            echo "|---|---|---|---|"
+            jq -r 'sort_by(.file, (.line | tonumber)) | .[]
+                   | "| \(.rule) (Vorpal-\(.ruleId)) | \(.severity) | `\(.file)` | \(.line) |"' \
+              vorpal-results/findings.json
+            echo ""
+            echo "_Source lines are not included. The full report is in the **vorpal-reports** artifact._"
+          } > vorpal-results/summary.md
+          cat vorpal-results/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload SARIF to GitHub Code scanning
+        if: always() && hashFiles('vorpal-results/vorpal.sarif') != ''
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          sarif_file: vorpal-results/vorpal.sarif
+          category: vorpal
+
+      - name: Keep the full reports
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: vorpal-reports
+          path: |
+            vorpal-results/findings.json
+            vorpal-results/vorpal.sarif
+            vorpal-results/summary.md
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Fail if a file could not be scanned
+        if: always() && steps.scan.outputs.failed != '' && steps.scan.outputs.failed != '0'
+        run: |
+          echo "::error::Vorpal could not scan these files, so the report is incomplete: $(head -5 "$RAW_DIR/failed.txt" | paste -sd, -)"
+          exit 1
+
+      # Pull requests only: comment on the lines the developer added, and fail the check
+      # while a finding is open
       - name: Vorpal with reviewdog
-        if: steps.changed.outputs.files != ''
+        if: always() && github.event_name == 'pull_request' && steps.changed.outputs.files != ''
         uses: checkmarx/vorpal-reviewdog-github-action@8cc292f337a2f1dea581b4f4bd73852e7becb50d # v1.2.0
         with:
           source_path: ${{ steps.changed.outputs.files }}
