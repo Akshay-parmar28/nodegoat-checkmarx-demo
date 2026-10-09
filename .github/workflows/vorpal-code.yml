@@ -1,6 +1,7 @@
 # Vorpal - secure-coding checks on the developer's pull request
-# Vorpal scans individual files (Java, JavaScript, C#, Python, Go), so we pass it
-# only the JavaScript files changed in the PR. Findings appear as annotations on the PR.
+# Vorpal scans individual files (Java, JavaScript, C#, Python, Go), so we pass it only the
+# JavaScript and Python files changed in the PR, and it reports only on the lines the developer
+# added. Findings appear as review comments on those lines, and the check fails until they are fixed.
 # Changed files are computed with plain git (no third-party changed-files action).
 name: Vorpal code scan
 
@@ -9,25 +10,27 @@ on:
 
 permissions:
   contents: read
-  checks: write
-  pull-requests: write
+  pull-requests: write   # review comments on the changed lines
 
 jobs:
   vorpal:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: List changed JavaScript files
+      - name: List changed source files
         id: changed
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           FILES=$(git diff --name-only --diff-filter=ACMR \
-                    "origin/${{ github.base_ref }}...HEAD" -- '*.js' \
-                  | { grep -v '^node_modules/' || true; } | paste -sd, -)
-          echo "Changed JS files: ${FILES:-none}"
+                    "origin/${BASE_REF}...HEAD" -- '*.js' '*.jsx' '*.py' \
+                  | paste -sd, -)
+          echo "Changed source files: ${FILES:-none}"
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
 
       - name: Vorpal with reviewdog
@@ -35,8 +38,9 @@ jobs:
         uses: checkmarx/vorpal-reviewdog-github-action@8cc292f337a2f1dea581b4f4bd73852e7becb50d # v1.2.0
         with:
           source_path: ${{ steps.changed.outputs.files }}
+          folders_to_ignore: node_modules,app/assets/vendor   # third-party code, not ours to fix
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-check   # annotations on the lines; use github-pr-review for PR comments
-          filter_mode: file           # report every finding in the changed files; "added" = only new lines
+          reporter: github-pr-review   # review comments in the PR conversation
+          filter_mode: added           # only the lines this PR adds, not old code in the same file
           level: error
-          fail_on_error: true         # red check when Vorpal finds an issue
+          fail_on_error: true          # red check while any finding is open

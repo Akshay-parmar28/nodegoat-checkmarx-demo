@@ -1,26 +1,24 @@
 name: Lint
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   lint:
-    name: Node.js
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: ["14.x"]
+    name: Lint (jshint)
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout https://github.com/${{ github.repository }}@${{ github.ref }}
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
 
-      - name: Set up Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+      - name: Set up Node.js
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "14.x"
 
       - name: Run linter
         run: npx --no-install jshint@2.12.0 .

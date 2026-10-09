@@ -1,3 +1,25 @@
+# NodeGoat: Checkmarx open-source security pipeline demo
+
+This copy of [OWASP NodeGoat](https://github.com/OWASP/NodeGoat) shows three Checkmarx open-source tools checking every change automatically on GitHub, before it reaches `master`.
+
+| Tool | What it checks | When it runs | What blocks a merge | Where to see results |
+|---|---|---|---|---|
+| **KICS** | Infrastructure as Code: the Azure Terraform in `infra/`, `Dockerfile`, `docker-compose.yml`, workflow files | Every pull request and every push to `master` | Any **Critical** or **High** finding | PR comment and annotations, job summary, **Security > Code scanning** |
+| **Vorpal** | Secure-coding issues in the JavaScript and Python lines a pull request adds | Every pull request | Any finding on an added line | Review comments on the exact lines in the PR |
+| **2ms** (Too Many Secrets) | Passwords, keys and tokens in the current files and in the full git history | Every pull request and every push to `master` | Any secret in the **current** files (history is reported, not blocking) | Job summary (with the commit for each historical secret), **Security > Code scanning** |
+
+How it fits together:
+
+- **Shift left, automatically.** Each tool runs as a GitHub Action in seconds, so a developer gets feedback in their own pull request with no manual step.
+- **Enforced, not advisory.** A ruleset on `master` requires the `kics`, `vorpal` and `secrets` checks to pass before a pull request can merge.
+- **Low noise.** Vorpal reports only on the lines a developer adds, third-party code is ignored, KICS blocks only on Critical and High, and a triaged 2ms false positive is suppressed.
+- **The pipeline protects itself too.** Every action is pinned to an exact commit, each workflow has only the permissions it needs, the 2ms download is checksum-verified, and secret values are removed from every report before it is uploaded.
+- **Deleted is not gone.** 2ms keeps scanning git history, because a secret removed from the code still sits in old commits. The fix is to rotate it and keep it in a vault; `infra/` shows the Azure Key Vault pattern.
+
+`infra/` is a sample Azure landing zone for NodeGoat (App Service, Cosmos DB for MongoDB, Key Vault) that gives KICS real cloud configuration to check. It is not meant to be applied as-is.
+
+---
+
 # NodeGoat
 
 Being lightweight, fast, and scalable, Node.js is becoming a widely adopted platform for developing web applications. This project provides an environment to learn how OWASP Top 10 security risks apply to web applications developed using Node.js and how to effectively address them.
