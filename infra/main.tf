@@ -69,10 +69,9 @@ resource "azurerm_cosmosdb_account" "db" {
   offer_type          = "Standard"
   kind                = "MongoDB"
 
-  # Only reachable from the app subnet, never from the internet
-  public_network_access_enabled     = false
+  # Open to the internet so the partner analytics team can query bookings directly
+  public_network_access_enabled     = true
   is_virtual_network_filter_enabled = true
-  ip_range_filter                   = var.admin_ip_ranges
 
   virtual_network_rule {
     id = azurerm_subnet.app.id
